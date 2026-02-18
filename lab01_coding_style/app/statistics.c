@@ -26,7 +26,33 @@ static uint8_t nr_of_throws[NR_OF_DICE_VALUES + 1] = {0};
 /* function definitions */
 
 /// STUDENTS: To be programmed
+/*
+ * Increments the total number of throws as well as the number for the throws
+ * with the result throw_value.
+ * throw_value has to be in the range of 1 up to NR_OF_DICE_VALUES, otherwise
+ * it will be ignored
+ */
+void statistics_add_throw(uint8_t throw_value){
+	if(throw_value>0 && throw_value<=NR_OF_DICE_VALUES){
+		nr_of_throws[throw_value] = nr_of_throws[throw_value] + 1;
+		nr_of_throws[0] = nr_of_throws[0] + 1;
+	}
+}
 
+/*
+ * Return the number of throws with the result 'dice_number'
+ * For 'dice_number' equal zero the total number of throws will be returned.
+ * If 'dice_number' is above NR_OF_DICE_VALUES the error code ERROR_VALUE will
+ * be returned.
+ */
+uint8_t statistics_read(uint8_t dice_number){
+	if(dice_number <= NR_OF_DICE_VALUES){
+		return nr_of_throws[dice_number];
+	} else {
+		return ERROR_VALUE;
+	}
+
+}
 
 
 
