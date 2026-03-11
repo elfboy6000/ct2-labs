@@ -1,20 +1,20 @@
 /* ----------------------------------------------------------------------------
- * --  _____       ______  _____                                              -
- * -- |_   _|     |  ____|/ ____|                                             -
- * --   | |  _ __ | |__  | (___    Institute of Embedded Systems              -
- * --   | | | '_ \|  __|  \___ \   Zurich University of                       -
- * --  _| |_| | | | |____ ____) |  Applied Sciences                           -
- * -- |_____|_| |_|______|_____/   8401 Winterthur, Switzerland               -
- * ----------------------------------------------------------------------------
- * --
- * -- Project     : CT2 Lab GPIO
- * -- Description : Configure and use GPIO port B as output and 
- * --               GPIO port A is input.
- * --               Lab version without additional hardware 
- * --               except for three wires.
- * --
- * -- $Id: main.c ostt $
- * ------------------------------------------------------------------------- */
+* --  _____       ______  _____                                              -
+* -- |_   _|     |  ____|/ ____|                                             -
+* --   | |  _ __ | |__  | (___    Institute of Embedded Systems              -
+* --   | | | '_ \|  __|  \___ \   Zurich University of                       -
+* --  _| |_| | | | |____ ____) |  Applied Sciences                           -
+* -- |_____|_| |_|______|_____/   8401 Winterthur, Switzerland               -
+* ----------------------------------------------------------------------------
+* --
+* -- Project     : CT2 Lab GPIO
+* -- Description : Configure and use GPIO port B as output and 
+* --               GPIO port A is input.
+* --               Lab version without additional hardware 
+* --               except for three wires.
+* --
+* -- $Id: main.c ostt $
+* ------------------------------------------------------------------------- */
 
 #include <stdint.h>
 #include <reg_stm32f4xx.h>
@@ -23,7 +23,8 @@
 
 /* user macros */
 /* Re-definition guard */
-#define MASK_3_BITS  0x0007
+#define MASK_2_BITS  0x0003 // = 0011
+#define MASK_3_BITS  0x0007 // = 0111
 
 static void init_GPIOA(void);
 static void init_GPIOB(void);
@@ -33,33 +34,37 @@ static void request_abort_startup(void);
 
 
 /* ----------------------------------------------------------------------------
- * Main
- * ------------------------------------------------------------------------- */
+* Main
+* ------------------------------------------------------------------------- */
 
-int main(void)
-{
+int main(void){
     uint16_t data_gpio_in;              // use to read input values from gpio
     uint8_t data_dip_switch;            // use to read values from dip switches
-		uint8_t state_gpio;
+    uint8_t state_gpio;
 
     GPIOA_ENABLE();                     // peripheral clk enable
     GPIOB_ENABLE();                     // peripheral clk enable
-		
-		//Reset the GPIOA and GPIOB to it's base value
-		reset_GPIO();
-		request_abort_startup();
-		
-		//Init functions
-		init_GPIOA();
-		config_check_GPIOA();
-		init_GPIOB();
+
+    //Reset the GPIOA and GPIOB to it's base value
+    reset_GPIO();
+    request_abort_startup();
+
+    //Init functions
+    init_GPIOA();
+    config_check_GPIOA();
+    init_GPIOB();
 
     while (1) {
         /* implement tasks 6.1 to 6.2 below */
-        /// STUDENTS: To be programmed
+        /// STUDENTS: To be programmed    
 
+        uint8_t dips = CT_DIPSW->BYTE.S15_8 & MASK_3_BITS;
 
+        CT_LED->BYTE.LED15_8 = dips;
+        CT_LED->BYTE.LED23_16 = (uint8_t) GPIOA->IDR & MASK_3_BITS;
 
+        GPIOB->ODR = dips;
+        CT_LED->BYTE.LED7_0 = (uint8_t) GPIOB->ODR & MASK_3_BITS;
 
         /// END: To be programmed
     }
@@ -74,16 +79,27 @@ int main(void)
 * These pins must not be reconfigured. 
 * OTHERWISE THE DEBUGGER CANNOT BE USED ANY MORE!!!
 */
-static void init_GPIOA(void)
-{
-		/* 6.1 define inputs */
+static void init_GPIOA(void){
+    /* 6.1 define inputs */
     /// STUDENTS: To be programmed
 
 
+    //clear moder
+    GPIOA->MODER &= ~(MASK_2_BITS << 0); //PA0
+    GPIOA->MODER &= ~(MASK_2_BITS << 2); //PA1
+    GPIOA->MODER &= ~(MASK_2_BITS << 4); //PA2
+    // clear pupdr
+    GPIOA->PUPDR &= ~(MASK_2_BITS << 0); //PA0
+    GPIOA->PUPDR &= ~(MASK_2_BITS << 2); //PA1
+    GPIOA->PUPDR &= ~(MASK_2_BITS << 4); //PA2
+
+    GPIOA->PUPDR = (0x02 << 0); //PA0
+    GPIOA->PUPDR = (0x01 << 2); //PA1
+    GPIOA->PUPDR = (0x00 << 4); //PA2
 
 
     /// END: To be programmed
-		
+
 }
 
 /* configure GPIOB pins
@@ -97,11 +113,35 @@ static void init_GPIOA(void)
 */
 static void init_GPIOB(void)
 {
-		/* 6.2 define outputs */
+    /* 6.2 define outputs */
     /// STUDENTS: To be programmed
+    GPIOB->MODER &= ~(0x03);//1100
+    GPIOB->MODER &= ~(0x03u << 2);//0011
+    GPIOB->MODER &= ~(0x03u << 4);//001 11
 
+    GPIOB->MODER |= 0x1u;   
+    GPIOB->MODER |= 0x1u << 2;
+    GPIOB->MODER |= 0x1u << 4;//010101: 01: General purpose output mode
 
+    GPIOB->OTYPER &= ~(0x01u);
+    GPIOB->OTYPER &= ~(0x01u << 1);
+    GPIOB->OTYPER &= ~(0x01u << 2);
 
+    GPIOB->OTYPER |= 0x1u << 1;
+    GPIOB->OTYPER |= 0x1u << 2;////110 : Output open-drain
+
+    GPIOB->PUPDR &= ~(0x03u);
+    GPIOB->PUPDR &= ~(0x03u << 2);
+    GPIOB->PUPDR &= ~(0x03u << 4);//00 0000 Reset
+
+    GPIOB->PUPDR |= 0x1u << 4; //01 0000 PULL UP / NO/ NO
+
+    GPIOB->OSPEEDR &= ~(0x03u);
+    GPIOB->OSPEEDR &= ~(0x03u << 2);
+    GPIOB->OSPEEDR &= ~(0x03u << 4); // 00 0000 Reset
+
+    GPIOB->OSPEEDR |= 0x1u << 2;
+    GPIOB->OSPEEDR |= 0x3u << 4;//1101 Very High, Medium Speed
 
     /// END: To be programmed
 
@@ -115,17 +155,17 @@ static void init_GPIOB(void)
 static void config_check_GPIOA(void)
 {
 
-	if(GPIOA->MODER != 0xa8000000)
-	{
+  if(GPIOA->MODER != 0xa8000000)
+  {
     CT_LCD->BG.RED = 0xffff;
     CT_LCD->BG.GREEN = 0x0000;
     CT_LCD->BG.BLUE = 0x0000;
-		
-		strcpy((void*)CT_LCD->ASCII, "Config error!       Reconfig needed!");
-		
-		while(1);
-    
-	}
+
+    strcpy((void*)CT_LCD->ASCII, "Config error!       Reconfig needed!");
+
+    while(1);
+
+  }
 }
 
 /* reset GPIOA & GPIOB
@@ -140,15 +180,15 @@ static void reset_GPIO(void)
     GPIOA->AFRL = 0x00000000;
     GPIOA->AFRH = 0x00000000;
     GPIOA->ODR = 0x00000000;             // output data register
-    
+
     /* Reset GPIOB specific values */
-    GPIOB->MODER = 0x00000280;           // mode register
+    GPIOB->MODER = 0x00000280;           // mode register to 01 01 00 00 00 7 & 9 Moder 3 und 4 -> General Purpose
     GPIOB->OSPEEDR = 0x000000c0;         // output speed register
     GPIOB->PUPDR = 0x00000100;           // pull resistor register
     GPIOB->OTYPER = 0x00000000;          // type register (pp / f. gate)
     GPIOB->AFRL = 0x00000000;
     GPIOB->AFRH = 0x00000000;
-    GPIOB->ODR = 0x00000000;             // output data register	
+    GPIOB->ODR = 0x00000000;             // output data register  
 }
 
 
