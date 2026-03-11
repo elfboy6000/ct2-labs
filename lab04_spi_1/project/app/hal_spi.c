@@ -77,12 +77,16 @@ uint8_t hal_spi_read_write(uint8_t send_byte)
 {
     /// STUDENTS: To be programmed
 
-    set_ss_pin_low();
+    set_ss_pin_low(); 
+		SPI1->DR = send_byte;
+	
     while (!(SPI1->SR & BIT_TXE));
-
-    SPI1->DR = send_byte;
+	
 
     while (!(SPI1->SR & BIT_RXNE));
+	
+
+    while (!(SPI1->SR & BIT_BSY));
 
     wait_10_us();
     set_ss_pin_high();
