@@ -56,9 +56,33 @@ void init_display_interface(void)
 uint8_t read_display_buffer(uint8_t *readBuffer)
 {
     /// STUDENTS: To be programmed
+    int buffer_request_response;
+	  uint8_t dc1_byte;
+		uint8_t length_byte;
+	  uint8_t bcc;
+	
+		if ((uint8_t*)0 == readBuffer) return 0;
+	
+    if (hal_sbuf_get_state() == 0) {
+        return 0;
+    }
 
+    if (send_read_display_buffer_request()) {
+        return 0;
+    }
 
+    dc1_byte = hal_spi_read_write(0x00);
+    if (dc1_byte != DC1_CHAR) {
+        return 0;
+    }
 
+    length_byte = hal_spi_read_write(0x00);
+    for (int i = 0; i < length_byte; i++) {
+        readBuffer[i] = hal_spi_read_write(0x00);
+    }
+    bcc = hal_spi_read_write(0x00);
+
+    return length_byte;
 
     /// END: To be programmed
 }
@@ -70,10 +94,25 @@ uint8_t read_display_buffer(uint8_t *readBuffer)
 uint8_t write_cmd_to_display(const uint8_t *cmdBuffer, uint8_t length)
 {
     /// STUDENTS: To be programmed
+	  int data_length = length + 1;
+		uint8_t rec_byte;
 
+    int bcc = DC1_CHAR + data_length + ESC_CHAR;
 
+    hal_spi_read_write(DC1_CHAR);
+    hal_spi_read_write(data_length);
+    hal_spi_read_write(ESC_CHAR);
+    for (int i = 0; i < length; i++) {
+        bcc += cmdBuffer[i];
+        hal_spi_read_write(cmdBuffer[i]);
+    }
+    hal_spi_read_write(bcc % 256);
 
-
+    rec_byte = hal_spi_read_write(0x00);
+    if (rec_byte == ACK_CHAR) {
+        return SUCCESS;
+    }
+    return ERRORCODE;
     /// END: To be programmed
 }
 
@@ -86,10 +125,16 @@ uint8_t write_cmd_to_display(const uint8_t *cmdBuffer, uint8_t length)
 static uint8_t send_read_display_buffer_request(void)
 {
     /// STUDENTS: To be programmed
-
-
-
-
+		#define S_CHAR 0x53
+    hal_spi_read_write(DC2_CHAR);
+    hal_spi_read_write(0x01);
+    hal_spi_read_write(S_CHAR);
+    hal_spi_read_write(DC2_CHAR + 0x01 + S_CHAR);
+    uint8_t rec_byte = hal_spi_read_write(0x00);
+    if (rec_byte != ACK_CHAR) {
+        return 1;
+    }
+    return 0;
     /// END: To be programmed
 
 }

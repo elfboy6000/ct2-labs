@@ -62,8 +62,11 @@ void hal_spi_init(void)
 
     /// STUDENTS: To be programmed
 
+		// DFF = 0?
+		SPI1->CR1 = 0b0000001100111100;
 
-
+        // Activate SPE
+		SPI1->CR1 |= 0b1000000;
 
     /// END: To be programmed
     set_ss_pin_high();
@@ -78,6 +81,17 @@ uint8_t hal_spi_read_write(uint8_t send_byte)
     /// STUDENTS: To be programmed
 
 
+		set_ss_pin_low();
+		while (!(SPI1->SR & BIT_TXE));
+
+		SPI1->DR = send_byte;
+
+		while (!(SPI1->SR & BIT_RXNE));
+
+		wait_10_us();
+    set_ss_pin_high();
+
+		return SPI1->DR;
 
 
     /// END: To be programmed

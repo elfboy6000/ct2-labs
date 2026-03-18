@@ -8,8 +8,9 @@
  * ------------------------------------------------------------------
  * --
  * -- Module      : SPI Library
+ * -- Description :
  * --
- * -- $Id: hal_spi.h 1654 2015-03-12 10:13:22Z muln $
+ * -- $Id: hal_spi.h 4707 2019-02-26 09:32:59Z ruan $
  * ------------------------------------------------------------------
  */
 
@@ -19,7 +20,7 @@
 #include <stdint.h>
 
 /**
- * Initialize SPI1 Interface (P5.4, P5.5, P5.6, P5.7)
+ * \brief Initialize SPI1 interface on port P5
  *
  * No parameters
  *
@@ -29,14 +30,12 @@ void hal_spi_init(void);
 
 
 /**
- * Read/Write data via SPI1 on Port P5
+ * \brief Read/write data via SPI1 on Port P5
  *
- * Parameters:
- * - uint8_t data: data to be sent via spi
+ * \param data: data to be sent via spi
  *
- * Returns: Data received from spi
+ * \returns data received from spi
  */
 uint8_t hal_spi_read_write(uint8_t send_byte);
-
 
 #endif    /* _SPI_H */

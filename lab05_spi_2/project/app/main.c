@@ -53,11 +53,24 @@ int main(void)
                         (uint8_t *)"PRESS ME");
     set_cursor_on_off(CURSOR_OFF);
 
+    uint8_t buffer[100];
     while (1) {
         /// STUDENTS: To be programmed
 
-
-
+        uint8_t read_bytes = read_display_buffer(buffer);
+				if (read_bytes < 4) {
+					continue;
+				}
+			  if (buffer[0] != 0x1B || buffer[1] != 'A' || buffer[2] != 0x01) {
+					continue;
+				}
+				if (buffer[3] == 0x01) {
+					CT_LED->BYTE.LED7_0 = LED_ON;
+				}
+				
+				if (buffer[3] == 0x02) {
+					CT_LED->BYTE.LED7_0 = LED_OFF;
+				}
 
         /// END: To be programmed
     }
