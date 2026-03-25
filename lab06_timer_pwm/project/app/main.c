@@ -34,7 +34,9 @@
 
 /// STUDENTS: To be programmed
 
-
+#define LED_ON 0xFF
+#define MASK_LOWER_4_BIT 0xF
+#define MASK_S31_SWITCH 0x80
 
 
 /// END: To be programmed
@@ -56,10 +58,33 @@ static uint16_t cycle_counter_4bit = 0;
 int main(void)
 {
     /// STUDENTS: To be programmed
+		uint16_t ch1_cycle;
+		uint16_t ch2_cycle;
+		uint16_t ch3_cycle;
+		int s31_set;
 
+		tim4_init();
+		tim3_init();
 
-
-
+		while(1) {
+			s31_set = CT_DIPSW->BYTE.S31_24 & MASK_S31_SWITCH;
+			
+			if (s31_set) {
+				ch1_cycle = cycle_counter_4bit * 4096;
+				ch2_cycle = 65536 - cycle_counter_4bit * 4096;
+			}
+			else {
+				ch1_cycle = (CT_DIPSW->BYTE.S7_0 & MASK_LOWER_4_BIT) * 4096; // 16 * 4096 = 65'536
+				ch2_cycle = (CT_DIPSW->BYTE.S15_8 & MASK_LOWER_4_BIT) * 4096; // 16 * 4096 = 65'536
+				// wrong, here before ch3_cycle = (CT_DIPSW->BYTE.S23_16 & MASK_LOWER_4_BIT) * 4096; // 16 * 4096 = 65'536
+			}
+			
+			ch3_cycle = (CT_DIPSW->BYTE.S23_16 & MASK_LOWER_4_BIT) * 4096; // 16 * 4096 = 65'536
+			
+			tim3_set_compare_register(PWM_CH1, ch1_cycle);
+			tim3_set_compare_register(PWM_CH3, ch3_cycle);
+			tim3_set_compare_register(PWM_CH2, ch2_cycle);
+		}
     /// END: To be programmed
 }
 
@@ -70,9 +95,11 @@ int main(void)
 void TIM4_IRQHandler(void)
 {
     /// STUDENTS: To be programmed
+		tim4_reset_uif(); // UIF Bit clear
+    CT_LED->BYTE.LED31_24 = CT_LED->BYTE.LED31_24 ^ LED_ON;
 
-
-
+	  //no overflow protection: cycle_counter_4bit++;
+		cycle_counter_4bit = (cycle_counter_4bit + 1) % 16; 
 
     /// END: To be programmed
 }

@@ -84,9 +84,17 @@ void tim3_init(void)
 
     /* add specific configuration for timer3 */
     /// STUDENTS: To be programmed
+		TIM3->CR1 = 0x0000;
+		
+		TIM3->PSC = 0x07; // 7
+		TIM3->ARR = 0xEA60; // 60'000
 
+		TIM3->CCMR1 |= 0x60; // Bit 5 + 6 = 1
+		TIM3->CCMR1 |= 0x6000; // Bit 13 + 14 = 1
+		TIM3->CCMR2 |= 0x60; // Bit 5 + 6 = 1
+		TIM3->CCER |= 0x0111; // Bit 8, 4, and 0 = 1
 
-
+		TIM3->CR1 |= 0x01; // timer enablen CEN bit
 
     /// END: To be programmed
 }
@@ -108,7 +116,15 @@ void tim4_init(void)
     /* add specific configuration for timer4 */
     /// STUDENTS: To be programmed
 
+		TIM4->PSC = 0x20D0; // 8400
+		TIM4->ARR = 0x2710; // 10'000
 
+		TIM4->CR1 = 0x0000;
+		TIM4->CR1 |= 0x10; // DIR = 1 (down)
+		
+		TIM4->DIER = 0x01; // UIE = 1 (Interrupt enable)
+	
+		TIM4->CR1 |= 0x01; // timer enablen CEN bit
 
 
     /// END: To be programmed
@@ -134,8 +150,19 @@ void tim3_set_compare_register(pwm_channel_t channel, uint16_t value)
 {
     /// STUDENTS: To be programmed
 
-
-
+		switch (channel) {
+			case PWM_CH1:
+				TIM3->CCR1 = value;
+				break;
+			case PWM_CH2:
+				TIM3->CCR2 = value;
+				break;
+			case PWM_CH3:
+				TIM3->CCR3 = value;
+				break;
+			default:
+				break;
+		}
 
     /// END: To be programmed
 }
