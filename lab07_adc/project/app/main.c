@@ -28,15 +28,14 @@
 #include "adc.h"
 #include "hal_ct_lcd.h"
 
-
 /* -- Macros for accessing CT Board LCD
  * ------------------------------------------------------------------------- */
 
-#define LCD            (*(uint16_t *)0x60000310)
+#define LCD (*(uint16_t *)0x60000310)
 
-#define ASCII_CHAR_V   (0x56)
+#define ASCII_CHAR_V (0x56)
 #define ASCII_CHAR_DOT (0x2e)
-#define ASCII_ZERO     (0x30)
+#define ASCII_ZERO (0x30)
 
 #define LCD_POSITION_0 (uint16_t)(0x0000)
 #define LCD_POSITION_1 (uint16_t)(0x0100)
@@ -45,24 +44,19 @@
 #define LCD_POSITION_4 (uint16_t)(0x0400)
 #define LCD_POSITION_5 (uint16_t)(0x0500)
 
-
 /* -- Macros used by student code
  * ------------------------------------------------------------------------- */
 
 /// STUDENTS: To be programmed
 
-
-
-
 /// END: To be programmed
-
 
 /* -- Local function declaration
  * ------------------------------------------------------------------------- */
 static uint16_t normalize_value(uint16_t value, adc_resolution_t resolution);
 static void display_on_lcd(uint16_t bcd_value);
-static void convert_hex_to_ascii(uint16_t hex_value, char* characters);
-
+static void convert_hex_to_ascii(uint16_t hex_value, char *characters);
+static uint16_t max_value(adc_resolution_t resolution);
 
 /* -- M A I N
  * ------------------------------------------------------------------------- */
@@ -70,80 +64,54 @@ static void convert_hex_to_ascii(uint16_t hex_value, char* characters);
 int main(void)
 {
     /// STUDENTS: To be programmed
-	  uint16_t adc_value;
-		adc_resolution_t resolution;
-	  uint8_t hexsw;
 
-	  adc_init();
-	  while (1) {
-			hexsw = CT_HEXSW;
-			switch (hexsw & 0b11) {
-				case 0b00:
-					resolution = ADC_RES_6BIT;
-				  CT_LED->HWORD.LED15_0 = 0x3F;
-					break;
-				case 0b01:
-					resolution = ADC_RES_8BIT;
-				  CT_LED->HWORD.LED15_0 = 0xFF;
-					break;
-				case 0b10:
-					resolution = ADC_RES_10BIT;
-				  CT_LED->HWORD.LED15_0 = 0x3FF;
-					break;
-				case 0b11:
-					resolution = ADC_RES_12BIT;
-				  CT_LED->HWORD.LED15_0 = 0xFFF;
-					break;
-			}
-		  adc_value = adc_get_value(resolution);
-			if (CT_DIPSW->BYTE.S7_0 & 0b1) {
-				adc_value = adc_filter_value(adc_value);
-			}
-			adc_value = normalize_value(adc_value, resolution);
-			display_on_lcd(adc_value);
-	  }
-
+    adc_init();
+    while (1)
+    {
+        uint8_t filtered = CT_DIPSW->BYTE.S7_0 & 1;
+        CT_LED->BYTE.LED23_16 = filtered;
+        adc_resolution_t resolution = ((~CT_HEXSW) & 3) << 24u;
+        CT_LED->HWORD.LED15_0 = max_value(resolution);
+        uint16_t sensor = adc_get_value(resolution);
+        if (filtered)
+        {
+            sensor = adc_filter_value(sensor);
+        }
+        display_on_lcd(normalize_value(sensor, resolution));
+        CT_SEG7->BIN.HWORD = sensor;
+    }
 
     /// END: To be programmed
 }
 
-
 /* -- Local function definitions
  * ------------------------------------------------------------------------- */
 
+static uint16_t max_value(adc_resolution_t resolution)
+{
+    switch (resolution)
+    {
+    case ADC_RES_12BIT:
+        return (1 << 12) - 1;
+    case ADC_RES_10BIT:
+        return (1 << 10) - 1;
+    case ADC_RES_8BIT:
+        return (1 << 8) - 1;
+    case ADC_RES_6BIT:
+        return (1 << 6) - 1;
+    }
+    return 0;
+}
+
 /*
- * Normalize value to an integer scale 0 - 3300 (0.0V - 3.3 V)
- *       ADC_RES_6BIT:     value 0 - 63          return 0 - 3300
- *       ADC_RES_8BIT:     value 0 - 255         return 0 - 3300
- *       ADC_RES_10BIT:    value 0 - 1023        return 0 - 3300
- *       ADC_RES_12BIT:    value 0 - 4095        return 0 - 3300
+ * Normalize value to scale 0..3300 (3.3 V)
  */
 static uint16_t normalize_value(uint16_t value, adc_resolution_t resolution)
 {
     /* Use of 32bit -> 4096(12bit) * 3300 = 13'516'800 */
     uint32_t normalized;
-
-    /// STUDENTS: To be programmed
-
-		switch (resolution) {
-			case ADC_RES_6BIT:
-				normalized = 3300 * value / 63;
-				break;
-			
-			case ADC_RES_8BIT:
-				normalized = 3300 * value / 255;
-				break;
-			
-			case ADC_RES_10BIT:
-				normalized = 3300 * value / 1023;
-				break;
-			
-			case ADC_RES_12BIT:
-				normalized = 3300 * value / 4095;
-				break;
-		}
-
-
+    uint16_t max = max_value(resolution);
+    normalized = value * 3300 / max;
     /// END: To be programmeds
 
     /* Return 16bit value -> max after normalization = 3300 */
@@ -158,7 +126,8 @@ static uint16_t normalize_value(uint16_t value, adc_resolution_t resolution)
 static void display_on_lcd(uint16_t data_3dec_places)
 {
     enum
-    {   value_size =5,
+    {
+        value_size = 5,
         voltage_size = 7,
         dot_position = 1
     };
@@ -168,70 +137,93 @@ static void display_on_lcd(uint16_t data_3dec_places)
     uint8_t character_size = 0;
     uint8_t start_point;
     uint8_t i;
-    
+
+    CT_LCD->BG.GREEN = 0xFFFF;
+    CT_LCD->BG.RED = 0xFFFF;
+    CT_LCD->BG.BLUE = 0xFFFF;
+
     // get the values
-    convert_hex_to_ascii(data_3dec_places, character_values);    
-    
+    convert_hex_to_ascii(data_3dec_places, character_values);
+
     // find first space or nul character
-    for(i = 0; i < value_size; i++){
-        if(character_values[i] < ASCII_ZERO){
+    for (i = 0; i < value_size; i++)
+    {
+        if (character_values[i] < ASCII_ZERO)
+        {
             character_size = i;
             break;
         }
     }
-    
+
     start_point = value_size - character_size - 1;
-    
+
     // shift chars to right and fill with zeros
-    for(i = 0; i < voltage_size; i++){
-        if(i < start_point){
+    for (i = 0; i < voltage_size; i++)
+    {
+        if (i < start_point)
+        {
             temp_character_voltage[i] = ASCII_ZERO;
-        } else{
+        }
+        else
+        {
             temp_character_voltage[i] = character_values[i - start_point];
         }
     }
-    
+
     // add dot, voltage and nul char
-    for(i = 0; i < value_size; i++){
-        if(i < dot_position){
+    for (i = 0; i < value_size; i++)
+    {
+        if (i < dot_position)
+        {
             character_voltage[i] = temp_character_voltage[i];
-        } else if(i == dot_position){
+        }
+        else if (i == dot_position)
+        {
             character_voltage[i] = ASCII_CHAR_DOT;
-        } else if(i > dot_position){
-            character_voltage[i] = temp_character_voltage[i-1];
+        }
+        else if (i > dot_position)
+        {
+            character_voltage[i] = temp_character_voltage[i - 1];
         }
     }
     character_voltage[voltage_size - 2] = ASCII_CHAR_V;
     character_voltage[voltage_size - 1] = 0;
-    
+
     // write characters to display
     hal_ct_lcd_write(0, character_voltage);
 }
 
-static void convert_hex_to_ascii(uint16_t hex_value, char* characters){
+static void convert_hex_to_ascii(uint16_t hex_value, char *characters)
+{
     uint8_t i = 0;
     uint8_t char_size;
-    enum {array_size = 5};
+    enum
+    {
+        array_size = 5
+    };
     char temp_characters[array_size];
-    
+
     // cut and convert digits to ascii
-    while(hex_value > 0){
+    while (hex_value > 0)
+    {
         temp_characters[i] = (hex_value % 10) + ASCII_ZERO;
         hex_value /= 10;
         i++;
     }
-    
+
     // invert order
     char_size = i;
-    for (i = 0; i < char_size; i++){
+    for (i = 0; i < char_size; i++)
+    {
         characters[i] = temp_characters[char_size - i - 1];
     }
-    
+
     // fill rest with spaces
-    for (i = char_size; i < array_size; i++){
+    for (i = char_size; i < array_size; i++)
+    {
         characters[i] = 32;
     }
-    
+
     // end last part with zero character
     characters[array_size - 1] = 0;
 }
